@@ -1,107 +1,83 @@
 pragma solidity ^0.4.0;
-contract Vote {
 
-    address public chairperson;
-    Voter[] voters;
-    Proposal[]  proposals;
+/// @title Vote System - Solidity Smart-contract
+/// @author Alexia Guillermond & Sajirami Selvaratnam
+
+contract Ballot {
 
     struct Voter {
         bool voted;
-        address addresse;
+        address id;
         uint vote;
     }
-
-    struct Proposal {
-        uint voteCount;
-        bytes32 nom;
-    }
-
-    // @notice (description de la fonction ) Allow voters to vote, take in argument the proposal
-    // @param (description des arguments)
-    function LetsVote(uint proposal)
-    {
-        for(uint i = 0; i< voters.length ; i++)
-        {
-            if(msg.sender == voters[i].addresse)
-            {
-                if(voters[i].voted) throw;
-                voters[i].voted = true;
-                proposals[proposal].voteCount += 1;
-                voters[i].vote = proposal;
-            }
-        }
-    }
-
-    // Allow to add a new voter to the voters tab this operation can be only
-    // perform by the chairman, the voter mustn't being already present in the tab
-    // Takes in parameter the address of the voter
-    function addVoter(address newVoter) {
-        bool present = false;
-        if (msg.sender != chairperson)
-        {
-            throw;
-        }
-        for(uint i = 0; i< voters.length ; i++)
-        {
-            if(newVoter == voters[i].addresse)
-            {
-                present = true ;
-            }
-        }
-        if(!present)
-        {
-            voters.push(Voter({voted : false, addresse : newVoter, vote : 0 }));
-        }
-
-    }
-
-    // Allow to add a new proposal to proposals tab this operation can be only
-    // perform by the chairman
-    // Takes in parameter the name of the proposal
-    function addProposal(bytes32 newProposal) {
-        bool present = false;
-        if (msg.sender != chairperson)
-        {
-            throw;
-        }
-        for(uint i = 0; i< proposals.length ; i++)
-        {
-            if(newProposal == proposals[i].nom) throw;
-            proposals.push( Proposal({nom : newProposal , voteCount : 0 }));
-        }
-    }
-
-    function winningProposal() constant returns (uint winningProposal)
-    {
-        uint winningVoteCount = 0;
-        for (uint i = 0; i < proposals.length; i++) {
-            if (proposals[i].voteCount > winningVoteCount) {
-                winningVoteCount = proposals[i].voteCount;
-                winningProposal = i;
-            }
-        }
-    }
-
-    function winnerName() constant
-            returns (bytes32 winnerName)
-    {
-        winnerName = proposals[winningProposal()].nom;
-    }
-}
-
-
-/*pragma solidity ^0.4.0;
-contract TP1_Vote{
-    //Represent a single voter
-    struct Voter {
-        address IDVoter;
-        uint dateVoted;
-        bool voted; //If he already voted, yes=1
-        uint vote;
-    }
-    //Single proposal
+    
     struct Proposal {
         bytes32 name;
+        address author;
         uint voteCount;
     }
-}*/
+    
+    address public chairperson;
+    mapping(address => Voter) voters;
+    Proposal[]  proposals;
+    uint currentTime = block.number;
+    uint endTime;
+
+    
+    // @notice: voter gives a vote to a proposal
+    // @param: Take in argument the proposal
+    function giveVote(uint proposal)
+    {
+        if(currentTime<endTime){
+            if(voters[msg.sender].id != proposals[proposal].author && voters[msg.sender].voted !=true){
+                voters[msg.sender].voted = true;
+                proposals[proposal].voteCount++;
+                voters[msg.sender].vote = proposal;
+            }
+        }
+    }
+
+    // @notice: add a new voter to the voters list, each voter has a proper single address
+    // @param: take in argument the address of a voter already registered to verify if the address exists already or not
+    //         (we should run through voters list and get their id)
+    function addVoter(address id) {
+        Voter newVoter;
+        if(msg.sender!= id){
+            newVoter.voted = false;
+            newVoter.id = msg.sender;
+            newVoter.vote = 0;
+        }
+    }
+
+    // @notice: add a new proposal to proposals tab, the new proposal must not exist yet
+    // @param: name of the new proposal
+    function addProposal(bytes32 newProposal) {
+        for(uint i = 0; i < proposals.length ; i++)
+        {
+            if(newProposal != proposals[i].name){ 
+                proposals.push( Proposal({
+                    name : newProposal , 
+                    author: msg.sender, 
+                    voteCount : 0 
+                }));
+            }
+            else{
+                throw;
+            }
+        }
+    }
+    
+    // @notice: count votes and return the winning proposal
+    function winningProposal() constant returns (uint,bytes32){
+        if(currentTime >= endTime){
+            uint winningVoteCount = 0;
+            for (uint i = 0; i < proposals.length; i++) {
+                if (proposals[i].voteCount > winningVoteCount) {
+                    winningVoteCount = proposals[i].voteCount;
+                    return (i,proposals[i].name);
+                }
+            }
+        }
+    }
+    
+}
